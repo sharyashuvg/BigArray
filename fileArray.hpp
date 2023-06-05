@@ -29,26 +29,28 @@ namespace BigArray {
 #endif
 
 #if defined(_MSC_VER)
-#define fRead(_Buffer,_ElementSize,_ElementCount,_Stream) _fread_nolock(_Buffer, _ElementSize, _ElementCount, _Stream)
-#define fWrite(_Buffer,_ElementSize,_ElementCount,_Stream) _fwrite_nolock(_Buffer, _ElementSize, _ElementCount, _Stream)
-#define fSeek(_Stream,_Offset,_Origin) _fseeki64_nolock(_Stream,_Offset,_Origin)
-#define fClose(_Stream) _fclose_nolock(_Stream)
+	#define fRead(_Buffer,_ElementSize,_ElementCount,_Stream) _fread_nolock(_Buffer, _ElementSize, _ElementCount, _Stream)
+	#define fWrite(_Buffer,_ElementSize,_ElementCount,_Stream) _fwrite_nolock(_Buffer, _ElementSize, _ElementCount, _Stream)
+	#define fSeek(_Stream,_Offset,_Origin) _fseeki64_nolock(_Stream,_Offset,_Origin)
+	#define fClose(_Stream) _fclose_nolock(_Stream)
 #else
-#define fRead(_Buffer,_ElementSize,_ElementCount,_Stream) fread(_Buffer, _ElementSize, _ElementCount, _Stream)
-#define fWrite(_Buffer,_ElementSize,_ElementCount,_Stream) fwrite(_Buffer, _ElementSize, _ElementCount, _Stream)
-#define fSeek(_Stream,_Offset,_Origin) _fseeki64(_Stream,_Offset,_Origin)
-#define fClose(_Stream) fclose(_Stream)
+	#define fRead(_Buffer,_ElementSize,_ElementCount,_Stream) fread(_Buffer, _ElementSize, _ElementCount, _Stream)
+	#define fWrite(_Buffer,_ElementSize,_ElementCount,_Stream) fwrite(_Buffer, _ElementSize, _ElementCount, _Stream)
+	#define fSeek(_Stream,_Offset,_Origin) _fseeki64(_Stream,_Offset,_Origin)
+	#define fClose(_Stream) fclose(_Stream)
 #endif
 
 #define uninitialized_type(type,name) \
 union { \
-type name; \
+	type name; \
 };
     
+	//should copy by reference if the type trivially_copyable_v<T> and size is small otherwise by reference
     template<typename T, class = void>
     struct param_type_helper {
         using type = T&;
     };
+	
     template<typename T>
     struct param_type_helper<T, void_t<enable_if_t<(sizeof(T) <= sizeof(void*) * 2) && is_trivially_copyable_v<T>, int>>> {
         using type = T;
@@ -57,7 +59,7 @@ type name; \
     template<typename T>
     using param_type = param_type_helper<T>::type;
 
-
+	//options for opening file
     struct OpenNew {};
     struct OpenExisting{};
     struct Both{};
