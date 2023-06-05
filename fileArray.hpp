@@ -1,11 +1,11 @@
 #pragma once
-#include <io.h>
-#include <fcntl.h>
 #include<stdio.h>
+#include <fcntl.h>
+#include <io.h>
 #include <stdlib.h>
 #include<type_traits>
 #include<exception>
-#include<shared_mutex>
+#include<mutex>
 #include<bit>
 
 /*
@@ -26,6 +26,18 @@ namespace BigArray {
 #define FORCE_INLINE inline __attribute__ ((__always_inline__))
 #else
 #define FORCE_INLINE inline
+#endif
+
+#if defined(_MSC_VER)
+#define fRead(_Buffer,_ElementSize,_ElementCount,_Stream) _fread_nolock(_Buffer, _ElementSize, _ElementCount, _Stream)
+#define fWrite(_Buffer,_ElementSize,_ElementCount,_Stream) _fwrite_nolock(_Buffer, _ElementSize, _ElementCount, _Stream)
+#define fSeek(_Stream,_Offset,_Origin) _fseeki64_nolock(_Stream,_Offset,_Origin)
+#define fClose(_Stream) _fclose_nolock(_Stream)
+#else
+#define fRead(_Buffer,_ElementSize,_ElementCount,_Stream) fread(_Buffer, _ElementSize, _ElementCount, _Stream)
+#define fWrite(_Buffer,_ElementSize,_ElementCount,_Stream) fwrite(_Buffer, _ElementSize, _ElementCount, _Stream)
+#define fSeek(_Stream,_Offset,_Origin) _fseeki64(_Stream,_Offset,_Origin)
+#define fClose(_Stream) fclose(_Stream)
 #endif
 
 #define uninitialized_type(type,name) \
@@ -72,7 +84,7 @@ private:
 		FORCE_INLINE BigArray(char const* FileName, Both _ = Both()){
             fopen_s(&_f, FileName, "r+b");
             if (!_f) fopen_s(&_f, FileName, "w+b");
-			if (!_f) throw std::exception("problem opening the file");
+			if (!_f) throw runtime_error("problem opening the file");
 
             if constexpr (StaticFile) {
                 _size = this->bytes >> f_type_size_factor;
@@ -80,14 +92,14 @@ private:
 		}
         FORCE_INLINE BigArray(char const* FileName, OpenExisting) {
             fopen_s(&_f, FileName, "r+b");
-            if (!_f) throw std::exception("problem opening the file");
+            if (!_f) throw runtime_error("problem opening the file");
         }
         FORCE_INLINE BigArray(char const* FileName, OpenNew) {
             fopen_s(&_f, FileName, "w+b");
-            if (!_f) throw std::exception("problem opening the file");
+            if (!_f) throw runtime_error("problem opening the file");
         }
         ~BigArray() {
-            _fclose_nolock(_f);
+            fClose(_f);
         }
 
         class reference {
@@ -130,8 +142,8 @@ private:
             if constexpr (ConcurrentSafe) {
                 _mutex.lock();
             }
-            _fseeki64_nolock(_f, pos, SEEK_SET);
-            _fread_nolock(&data, type_size, 1, _f);
+            fSeek(_f, pos, SEEK_SET);
+            fRead(&data, type_size, 1, _f);
             if constexpr (ConcurrentSafe) {
                 _mutex.unlock();
             }
@@ -141,8 +153,8 @@ private:
             if constexpr (ConcurrentSafe) {
                 _mutex.lock();
             }
-            _fseeki64_nolock(_f, pos, SEEK_SET);
-            _fwrite_nolock(data, type_size, 1, _f);
+            fSeek(_f, pos, SEEK_SET);
+            fWrite(data, type_size, 1, _f);
             if constexpr (ConcurrentSafe) {
                 _mutex.unlock();
             }
@@ -169,7 +181,7 @@ private:
             if constexpr (ConcurrentSafe) {
                 _mutex.lock();
             }
-            _fseeki64_nolock(_f, 0, SEEK_END);
+            fSeek(_f, 0, SEEK_END);
             int size = ftell(_f);
             if constexpr (ConcurrentSafe) {
                 _mutex.unlock();
